@@ -44,6 +44,8 @@ x-coinflow-auth-user-id: customer123
 Listen for success via postMessage:
 ```javascript
 window.addEventListener('message', event => {
+  // Match the exact origin of the checkout link (see the table above).
+  if (event.origin !== 'https://coinflow.cash') return;
   if (typeof event.data === 'string') {
     const data = JSON.parse(event.data);
     if (data.data === 'success') {
@@ -56,7 +58,9 @@ window.addEventListener('message', event => {
 **IMPORTANT**: When embedding in an iframe, add `&useHeightChange=true` to the URL and listen for height change messages to avoid scroll issues:
 ```javascript
 window.addEventListener('message', ({data, origin}) => {
-  if (!origin.includes('coinflow.cash')) return;
+  // Match the exact origin of the iframe you embed (see the table above);
+  // a substring check like origin.includes('coinflow.cash') is bypassable.
+  if (origin !== 'https://coinflow.cash') return;
   try {
     const message = JSON.parse(data);
     if (message.method === 'heightChange') setHeight(message.data);
@@ -321,9 +325,14 @@ try {
 
 **Challenge modal implementation:**
 ```jsx
+// challenge_success is posted from either the UI or the API origin (see the
+// table above); compare exactly, never with a substring check.
+const CHALLENGE_ORIGINS = ['https://coinflow.cash', 'https://api.coinflow.cash'];
+
 function ChallengeModal({url, creq, transactionId, onComplete}) {
   useEffect(() => {
     const handler = (event) => {
+      if (!CHALLENGE_ORIGINS.includes(event.origin)) return;
       if (event.data === 'challenge_success') onComplete(transactionId);
     };
     window.addEventListener('message', handler);
@@ -528,6 +537,71 @@ const chargebackProtectionData = [
 ```
 
 **Product types:** `inGameProduct`, `gameOfSkill`, `dataStorage`, `computingResources`, `sportsTicket`, `eSportsTicket`, `musicTicket`, `conferenceTicket`, `virtualSportsTicket`, `virtualESportsTicket`, `virtualMusicTicket`, `virtualConferenceTicket`, `alcohol`, `DLC`, `subscription`, `fundACause`, `realEstate`, `computingContract`, `digitalArt`, `topUp`
+
+### Travel bookings
+
+Merchants selling flights and hotel reservations must declare each booking with a travel-specific `itemClass` so fraud detection evaluates travel-specific signals (itinerary, lodging, PNR, trip, and flight details) instead of treating the purchase as a generic product:
+
+| `itemClass` | Use for | Required fields (besides `sellingPrice`) |
+| --- | --- | --- |
+| `travel` | Combined flight + hotel package | `lodging`, `pnr`, `trip`, `firstFlight` |
+| `flightTicket` | Flight ticket on its own | `pnr`, `trip`, `firstFlight` |
+| `flightUpgrade` | Upgrade to an existing flight booking | `upgradeType` (`changes` \| `fareIncrease` \| `baggage` \| `seats` \| `insurance` \| `other`; `description` required when `other`), optional `pnr` |
+| `lodging` | Hotel reservation on its own | The fields of the `lodging` object below, flattened at the top level of the item |
+
+Example combined package (`itemClass: 'travel'`) — all of `sellingPrice`, `lodging`, `pnr`, `trip`, and `firstFlight` are required:
+
+```javascript
+const chargebackProtectionData = [
+  {
+    itemClass: 'travel',
+    sellingPrice: {valueInCurrency: 1250.0, currency: 'USD'},
+    lodging: {
+      reservationId: 'X36Q9C',
+      nights: 3,
+      checkInDate: '2026-09-02',
+      checkInHour: '15', // '00'-'23'
+      hotel: {name: 'The Plaza Hotel', country: 'US', city: 'New York'},
+      wereExtrasPurchased: false,
+      isRefundable: true,
+      highestRoomType: 'Deluxe King',
+      numberOfRooms: 1,
+      numberOfGuests: 2,
+      numberOfKids: 0
+    },
+    pnr: 'X36Q9C',
+    trip: {
+      numberOfFlights: 2,
+      numberOfCheckedBags: 1,
+      firstWayDestination: 'JFK', // three-letter IATA code
+      isRoundTrip: true,
+      highestClass: 'economy', // 'economy' | 'luxurious' (business/first)
+      isFlexibleTicket: false,
+      wereExtrasPurchased: false
+    },
+    firstFlight: {
+      numberOfTravelers: 2,
+      departureTime: 1788373800000, // milliseconds since unix epoch
+      departureAirport: 'SFO', // three-letter IATA code
+      duration: 5.5, // hours
+      flightNumber: 'AA1234'
+    }
+  }
+];
+```
+
+Flight-only bookings (`itemClass: 'flightTicket'`) use the same `pnr`, `trip`, and `firstFlight` shapes without `lodging`. Hotel-only bookings (`itemClass: 'lodging'`) use the `lodging` fields flattened at the top level of the item. Flight upgrades (`itemClass: 'flightUpgrade'`) need only `sellingPrice` and `upgradeType`:
+
+```javascript
+{
+  itemClass: 'flightUpgrade',
+  sellingPrice: {valueInCurrency: 45.0, currency: 'USD'},
+  pnr: 'X36Q9C',
+  upgradeType: 'seats' // 'changes' | 'fareIncrease' | 'baggage' | 'seats' | 'insurance' | 'other'
+}
+```
+
+**Pitfall:** omitting `itemClass` on a travel booking makes it score as a generic product, which hurts approval rates for travel transactions.
 
 ### Protection headers for API calls
 

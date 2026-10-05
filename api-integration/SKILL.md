@@ -470,8 +470,9 @@ When embedding Coinflow UI in iframes, communication happens via `postMessage`:
 
 ```javascript
 window.addEventListener('message', (event) => {
-  // Always validate origin
-  if (!event.origin.includes('coinflow.cash')) return;
+  // Always validate origin with an exact match (see the table above); a
+  // substring check like event.origin.includes('coinflow.cash') is bypassable.
+  if (event.origin !== 'https://coinflow.cash') return;
 
   const data = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
 
@@ -519,7 +520,7 @@ const [iframeLoaded, setIframeLoaded] = useState(false);
 1. **Never expose API keys in frontend code** — Use session keys for frontend, API keys for server-only
 2. **Always validate webhook signatures** — See webhook skill
 3. **Use tokenization for all card data** — Never handle raw card numbers
-4. **Validate postMessage origins** — Always check `event.origin.includes('coinflow.cash')`
+4. **Validate postMessage origins** — Compare with an exact match, e.g. `event.origin === 'https://coinflow.cash'` (a substring check like `event.origin.includes('coinflow.cash')` is satisfied by attacker origins such as `https://coinflow.cash.evil.test`)
 5. **Add chargeback protection to every page** — Not just checkout pages
 6. **Pass real IP addresses** — `x-coinflow-client-ip` must be the actual customer IP, not your server IP
 7. **Use HTTPS everywhere** — Coinflow will not load in insecure contexts

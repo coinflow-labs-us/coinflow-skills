@@ -259,6 +259,41 @@ Direct USDC payment received in settlement location.
 
 ---
 
+### PayPal / Venmo Events (Category: "Purchase")
+
+| Event | Description |
+|-------|-------------|
+| PayPal Payment Authorized | PayPal payment authorized but not yet captured |
+| Venmo Payment Authorized | Venmo payment authorized but not yet captured |
+| Settled | Payment completed (same structure as card Settled) |
+| PayPal Failure / Venmo Failure | Payment failed during authorization or capture |
+
+The `PayPal Payment Authorized`, `Venmo Payment Authorized`, and `Settled` events include extra identity fields when available on the payment:
+
+```json
+{
+  "eventType": "PayPal Payment Authorized",
+  "category": "Purchase",
+  "data": {
+    "id": "78f9be3f-691f-4f8c-82f7-c70221b006e7",
+    "customerId": "customer1",
+    "merchantId": "testtest",
+    "paymentMethod": "paypal",
+    "paymentMethodToken": "tok_paypal_abc123",
+    "payerName": "John Doe",
+    "payerFirstName": "John",
+    "payerLastName": "Doe",
+    "...": "...standard amount fields (subtotal, fees, total, etc.)"
+  }
+}
+```
+
+- `paymentMethodToken` — vaulted payment method token for the payment
+- `payerName` / `payerFirstName` / `payerLastName` — the PayPal/Venmo account holder's name, useful for reconciling payments to customers. Present when the payer identity was captured on the payment.
+- The `Settled` event for PayPal/Venmo additionally includes `payerId` — the payer's PayPal/Venmo account id.
+
+---
+
 ### ACH Events (Category: "Purchase")
 
 | Event | Description |
@@ -455,6 +490,8 @@ Subscription renewals fire **Settled** events with a `subscription` object in th
 }
 ```
 
+For PayPal and Venmo payouts, `Withdraw Failure` events can include `data.reason`, for example `"RECEIVER_UNREGISTERED: The recipient does not have a PayPal or Venmo account for this email or phone number"`. It is left out when no reason is available and for other payout methods.
+
 ---
 
 ### Crypto Deposit Events (Category: "CryptoDeposit")
@@ -467,6 +504,7 @@ Subscription renewals fire **Settled** events with a `subscription` object in th
   "category": "CryptoDeposit",
   "data": {
     "sessionId": "session-123",
+    "idempotencyKey": "00000000-0000-0000-0000-000000000000",
     "depositAddress": "deposit-address-here",
     "blockchainChainId": "solana",
     "tokenSymbol": "USDC",
@@ -488,6 +526,10 @@ Subscription renewals fire **Settled** events with a `subscription` object in th
 | Settled | Purchase | Payment completed and funds delivered |
 | Card Payment Authorized | Purchase | Card issuer authorized |
 | Card Payment Declined | Purchase | Card issuer declined |
+| PayPal Payment Authorized | Purchase | PayPal payment authorized |
+| Venmo Payment Authorized | Purchase | Venmo payment authorized |
+| PayPal Failure | Purchase | PayPal payment failed |
+| Venmo Failure | Purchase | Venmo payment failed |
 | Card Payment Suspected Fraud | Purchase | Fraud detection rejected |
 | Payment Pending Review | Purchase | Awaiting manual review |
 | USDC Payment Received | Purchase | Direct USDC received |

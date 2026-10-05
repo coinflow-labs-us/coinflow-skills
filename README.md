@@ -18,12 +18,12 @@ Skills run **entirely locally**. They do not transmit your code to Coinflow or a
 ## Installation
 
 ```bash
-npx skills add coinflow-labs/coinflow-skills
+npx skills add coinflow-labs-us/coinflow-skills
 ```
 
 Or install specific skills:
 ```bash
-npx skills add coinflow-labs/coinflow-skills --skill checkout-integration
+npx skills add coinflow-labs-us/coinflow-skills --skill checkout-integration
 ```
 
 ## Resources
