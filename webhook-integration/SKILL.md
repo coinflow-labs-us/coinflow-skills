@@ -292,6 +292,84 @@ The `PayPal Payment Authorized`, `Venmo Payment Authorized`, and `Settled` event
 - `payerName` / `payerFirstName` / `payerLastName` — the PayPal/Venmo account holder's name, useful for reconciling payments to customers. Present when the payer identity was captured on the payment.
 - The `Settled` event for PayPal/Venmo additionally includes `payerId` — the payer's PayPal/Venmo account id.
 
+#### PayPal Failure / Venmo Failure
+
+Sent when a PayPal or Venmo payment fails, either during authorization or later when the capture fails. A failure can therefore arrive **after** a `PayPal Payment Authorized` / `Venmo Payment Authorized` event for the same `id`.
+
+```json
+{
+  "eventType": "PayPal Failure",
+  "category": "Purchase",
+  "data": {
+    "id": "78f9be3f-691f-4f8c-82f7-c70221b006e7",
+    "customerId": "customer1",
+    "merchantId": "testtest",
+    "declineCode": "881",
+    "declineDescription": "The instrument presented was either declined by the processor or bank, or it can't be used for this payment",
+    "...": "...standard amount fields (subtotal, fees, total, etc.)"
+  }
+}
+```
+
+- `declineCode` — why the payment failed (table below). The same code is stored on the payment and shown in the **Code** column of the merchant dashboard.
+- `declineDescription` — a readable reason. Log it, but **branch on `declineCode`, not on the description text**.
+
+| `declineCode` | Meaning | What to tell the customer |
+|---------------|---------|---------------------------|
+| `05` | Any other failure (also used for a capture declined without a specific reason) | Try again or use a different payment method |
+| `12` | Customer did not finish approving the payment, or the approval expired | Restart checkout and approve the payment |
+| `54` | Card funding the PayPal/Venmo account has expired | Update the card or choose another funding source |
+| `410` | Your PayPal account is not set up to accept this payment | Merchant-side issue — contact Coinflow support |
+| `430` | Payment was already authorized or captured | Check whether it already went through; do **not** retry blindly |
+| `872` | PayPal/Venmo account already used by a different customer (only when account reuse blocking is enabled) | Pay with their own account or a different payment method |
+| `873` | Account holder name does not match the customer (only when name matching is enabled) | Pay with an account in their own name |
+| `881` | Funding source declined | Choose a different funding source |
+| `882` | Transaction refused by PayPal | Try a different funding source or contact PayPal |
+| `883` | Account cannot be used for this payment | Use a different account or payment method |
+| `884` | Account is locked or closed | Contact PayPal/Venmo or use a different payment method |
+| `885` | A different funding source is required | Choose a different funding source |
+| `999` | Rejected by chargeback protection; no charge was made | Use a different payment method |
+
+`00` is the code of an authorized payment. It never appears on a failure event.
+
+```typescript
+function handlePayPalVenmoFailure(event: {
+  eventType: 'PayPal Failure' | 'Venmo Failure';
+  data: {id: string; declineCode: string; declineDescription: string};
+}) {
+  const {id, declineCode, declineDescription} = event.data;
+  // Webhooks can be delivered more than once — make this idempotent on `id`.
+  markOrderFailed({paymentId: id, reason: declineDescription});
+
+  switch (declineCode) {
+    case '881':
+    case '882':
+    case '885':
+    case '54':
+      return promptCustomer('Please choose a different funding source and try again.');
+    case '872':
+    case '873':
+    case '883':
+    case '884':
+    case '999':
+      return promptCustomer('Please use a different payment method.');
+    case '12':
+      return promptCustomer('Please restart checkout and approve the payment.');
+    case '430':
+      return checkForExistingPayment(id); // already authorized/captured — don't charge twice
+    case '410':
+      return alertOps('PayPal account configuration issue — contact Coinflow support');
+    default: // '05' and any code added later
+      return promptCustomer('Your payment could not be completed. Please try again.');
+  }
+}
+```
+
+**Pitfalls:**
+- **Older integrations may still match on `declineCode: "1"` or `"NAME_MATCH_FAILED"`.** PayPal/Venmo failures no longer send those values — a name mismatch is now `873`. Update any such checks.
+- **Always include a `default` branch.** New codes may be added; treat unknown codes like `05`.
+- If PayPal rejects a checkout before a payment is created, the checkout API call returns an error and **no** failure webhook is sent. Handle that error in your checkout code as well.
+
 ---
 
 ### ACH Events (Category: "Purchase")
