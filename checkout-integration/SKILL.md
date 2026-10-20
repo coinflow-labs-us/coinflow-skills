@@ -405,6 +405,18 @@ export class ThreeDSService {
 
 Cards are saved during initial checkout. The `paymentId` returned becomes the reference.
 
+### Reading a saved card's funding type
+
+Each saved card returned by `GET /api/customer/v2` may include `funding`: `credit`, `debit`, or `prepaid`. Use it to price or route debit and credit differently (e.g. after a zero auth).
+
+```bash
+curl -X GET https://api-sandbox.coinflow.cash/api/customer/v2 \
+  -H "x-coinflow-auth-session-key: SESSION_KEY"
+# customer.cards[] → {"token": "...", "last4": "1111", "type": "VISA", "funding": "debit", ...}
+```
+
+**`funding` is optional — always handle it being absent.** It is omitted when the card issuer's funding type could not be determined; Coinflow retries on later `GET /api/customer/v2` calls. Apple Pay / Google Pay entries in `mobiles` do not carry `funding`.
+
 ### Refreshing a saved card token (CVV re-entry)
 
 Before using a saved card, you must refresh the token with a new CVV:
