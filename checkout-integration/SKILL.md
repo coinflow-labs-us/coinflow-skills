@@ -235,6 +235,8 @@ import {CoinflowApplePayButton} from '@coinflowlabs/react';
 />
 ```
 
+Optional `allowedCardFunding: CardFunding[]` (`CardFunding.debit | credit | prepaid`, exported from the SDK) limits which cards this button's Apple Pay sheet shows; `prepaid` shows debit cards. It's a display preference only, so cards outside the list aren't declined.
+
 ### Google Pay
 
 **Requirements:**
