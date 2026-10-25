@@ -345,6 +345,8 @@ x-coinflow-auth-blockchain: solana
 x-coinflow-auth-user-id: user123
 ```
 
+For card payouts, add `accountToken=<card token>`. If your account has a separate fee for non-USD (global) cards, a `card` quote without a known card (no `accountToken`, or `APPLE_PAY`) shows the higher of the two fees; the payout charges the fee for the actual card, so it is never more than quoted.
+
 **USDC Token addresses:**
 - Sandbox (Solana): `4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`
 - Production (Solana): `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`
