@@ -634,6 +634,48 @@ Pass `deviceId` to `<CoinflowPurchase>` or include as `x-device-id` header.
 
 ---
 
+## Level 2/3 Data (B2B)
+
+B2B merchants can pass Level 2/3 data on business and commercial card payments to qualify for lower interchange. Pass `l2l3Data` on `POST /api/checkout/card/{merchantId}`, `POST /api/checkout/token/{merchantId}`, or `POST /api/checkout/jwt-token`. It is **not** accepted on wallets (Apple Pay, Google Pay, Paze), card on file, MIT, or zero authorization.
+
+```bash
+POST /api/checkout/card/YOUR_MERCHANT_ID
+{
+  "subtotal": {"currency": "USD", "cents": 50000},
+  "card": {...},
+  "l2l3Data": {
+    "level": "level3",
+    "level2": {
+      "taxExempt": false,
+      "salesTax": {"cents": 4000},
+      "invoiceReference": "INV-10023"
+    },
+    "level3": {
+      "discountAmount": {"cents": 0},
+      "shippingAmount": {"cents": 1500},
+      "dutyAmount": {"cents": 0},
+      "shipping": {"postalCode": "60601", "countryCode": "US"},
+      "items": [{
+        "name": "Steel bracket", "productCode": "SB-100",
+        "quantity": 10, "unitCost": {"cents": 4500},
+        "unitOfMeasure": "EA", "commodityCode": "65045",
+        "totalTaxAmount": {"cents": 4000}, "totalDiscountAmount": {"cents": 0},
+        "totalAmountNoTax": {"cents": 45000}, "totalAmount": {"cents": 49000}
+      }]
+    }
+  }
+}
+```
+
+- `level: "level2"` needs only `level2`. `level: "level3"` needs both `level2` and `level3`.
+- `level2` is either `{"taxExempt": false, "salesTax": {...}}` or `{"taxExempt": true}`. A `salesTax` sent with `taxExempt: true` is dropped.
+- **Invalid data returns 422 and the payment is not attempted.** Limits: `invoiceReference` ≤ 15 chars, item `name` ≤ 26, `productCode`/`commodityCode` ≤ 12, `unitOfMeasure` ≤ 8, postal code ≤ 10, `countryCode` two uppercase letters, 1–99 items, `quantity` a whole number ≥ 1. Text fields allow letters, digits, spaces and `@ ! £ * # $ ) ( + _ = . , / ; : ' " -`.
+- **Valid data never blocks a payment.** The payment processes either way; the data is only forwarded when your account is enabled for L2/L3 data (ask Coinflow), the card is business or commercial, the card is Visa or Mastercard, and sales tax is within the network range of the payment total (Visa 0.1–22%, Mastercard 0.1–30%). Visa business cards are sent as Level 2 even when Level 3 data is passed. Tax-exempt orders are accepted and stored but not currently forwarded.
+- With a checkout JWT, the `l2l3Data` signed into the JWT wins over any value in the checkout body.
+- The payment record's `cardInfo` shows `l2l3Data`, `l2l3Sent` (`none` | `level2` | `level3`) and, when nothing was sent, `l2l3SkipReason` (e.g. `merchantNotEnabled`, `nonCommercialCard`, `taxOutOfRange`, `taxExemptDisabled`, `unsupportedCurrency`, `unsupportedCardBrand`, `noProcessorSupport`, `processorUnsupported`).
+
+---
+
 ## Payer Events (Fraud Detection)
 
 Send lifecycle events to improve fraud scoring:
