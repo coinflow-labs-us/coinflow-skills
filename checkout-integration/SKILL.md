@@ -513,7 +513,7 @@ POST /api/checkout/zero-authorization/YOUR_MERCHANT_ID
 # Returns: {"paymentId": "uuid"}
 ```
 
-The `cardToken` is obtained from the `CoinflowCardNumberInput` component — never send raw card numbers.
+The `cardToken`, `expMonth` and `expYear` come from `tokenize()` on the `CoinflowCardForm` (or `CoinflowCardNumberForm`) component — never send raw card numbers.
 
 ---
 

@@ -234,21 +234,21 @@ POST /api/withdraw/debit-card
 {"cardToken": "411111YJM5TX1111", "expYear": "30", "expMonth": "10"}
 ```
 
-**For web apps, use `CoinflowCardOnlyInput` (no CVV collection):**
+**For web apps, use `CoinflowCardNumberForm` (card number and expiration, no CVV collection):**
 ```jsx
-import {CoinflowCardOnlyInput, CardType} from '@coinflowlabs/react';
+import {CoinflowCardNumberForm, CardFormRef} from '@coinflowlabs/react';
 
-<CoinflowCardOnlyInput
+const ref = useRef<CardFormRef>(null);
+
+<CoinflowCardNumberForm
   merchantId="your-merchant-id"
   ref={ref}
-  cardType={CardType.VISA}
-  token=""
   env="sandbox"
 />
 
 // On submit:
-const {token} = await ref.current.getToken();
-// Then POST /api/withdraw/debit-card with token
+const {token, expMonth, expYear} = await ref.current.tokenize();
+// Then POST /api/withdraw/debit-card with token, expMonth and expYear
 ```
 
 ### U.S. — Venmo
@@ -585,6 +585,6 @@ Funds are pre-loaded in sandbox for testing.
 
 6. **Not tokenizing debit cards** — PCI compliance requires tokenization. Raw card numbers must never touch your servers.
 
-7. **CVV for debit card payouts** — Unlike checkout, debit card payout tokenization does NOT require CVV. Use `CoinflowCardOnlyInput` or `POST /api/tokenize/mobile/card-only`.
+7. **CVV for debit card payouts** — Unlike checkout, debit card payout tokenization does NOT require CVV. Use `CoinflowCardNumberForm` or `POST /api/tokenize/mobile/card-only`.
 
 8. **24-hour wait for USDC withdrawals** — International users withdrawing USDC to Solana wallet must wait 24 hours after verification before first withdrawal.
