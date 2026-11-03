@@ -384,7 +384,7 @@ Response:
 
 ## Step 5: Initiate Payout
 
-### From Coinflow Wallet (Delegated)
+### From Coinflow Balance (Delegated)
 
 ```bash
 POST /api/merchant/withdraws/payout/delegated
