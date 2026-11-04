@@ -384,6 +384,39 @@ function handlePayPalVenmoFailure(event: {
 
 **ACH lifecycle:** Initiated → Batched → Settled (success) OR Returned/Failed (failure)
 
+#### Bank Account Name Match Failed
+
+Fires when linking a bank account is refused because the account owner's name does not match the customer's name. Sent for payers (`flow: "purchase"`) and withdrawers (`flow: "withdraw"`); the category is always `"Purchase"`. The link request itself still fails with a generic error, so this webhook is the only place the reason appears.
+
+```json
+{
+  "eventType": "Bank Account Name Match Failed",
+  "category": "Purchase",
+  "created": "2025-04-17T14:16:09.112Z",
+  "data": {
+    "merchantId": "your-merchant-id",
+    "customerId": "customer1",
+    "flow": "purchase",
+    "method": "linked",
+    "tokens": ["bank-account-token"],
+    "bankOwnerNames": ["Jonathan Q Smith"],
+    "comparedNames": ["Jon Smyth"],
+    "score": 71,
+    "threshold": 85
+  }
+}
+```
+
+| Field | Notes |
+|-------|-------|
+| `customerId` | Customer id for purchases; the withdrawer's user id (`x-coinflow-user-id`) for withdrawals |
+| `method` | `linked` (owner names from the bank login) or `manual` (name entered with the account details) |
+| `bankOwnerNames` | Owner names on the bank account |
+| `comparedNames` | Names on file that were compared against, such as the verified KYC name or the `customerInfo` name you provided. **Can be empty**, meaning no name was on file |
+| `score` / `threshold` | Best similarity score (0–100) and the score required |
+
+**To let the payer retry (purchases only):** ask them for the name on their bank account, send it as `customerInfo` to `POST /customer`, then have them link the bank again. **This does not help when `comparedNames` is a verified KYC name or for withdrawals**, which always compare against verified KYC.
+
 ---
 
 ### PIX Events (Category: "Purchase")
@@ -618,6 +651,7 @@ For PayPal and Venmo payouts, `Withdraw Failure` events can include `data.reason
 | ACH Batched | Purchase | ACH accepted by bank |
 | ACH Returned | Purchase | ACH returned by bank |
 | ACH Failed | Purchase | ACH denied by bank |
+| Bank Account Name Match Failed | Purchase | Bank link refused: owner name did not match |
 | PIX Failed | Purchase | PIX processing failed |
 | PIX Expiration | Purchase | PIX window expired |
 | Payment Expiration | Purchase | SEPA/PIX window expired |
