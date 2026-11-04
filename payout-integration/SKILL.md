@@ -204,6 +204,8 @@ x-coinflow-auth-user-id: user123
 }
 ```
 
+**Bank accounts are removed after a hard ACH return.** If an ACH payout is returned because the account is closed (R02), can't be located (R03), or has an invalid account number (R04), Coinflow removes that bank account. It no longer appears in `GET /api/withdraw`, and payouts to its token fail with `400` `"Bank account has been removed, please re-link it to withdraw"`. Prompt the user to re-link (`POST /api/withdraw/account`) with corrected details.
+
 ### U.S. — Debit Card
 
 **Requires card tokenization first.** Use `CoinflowCardForm` or API tokenization.
@@ -587,4 +589,6 @@ Funds are pre-loaded in sandbox for testing.
 
 7. **CVV for debit card payouts** — Unlike checkout, debit card payout tokenization does NOT require CVV. Use `CoinflowCardNumberForm` or `POST /api/tokenize/mobile/card-only`.
 
-8. **24-hour wait for USDC withdrawals** — International users withdrawing USDC to Solana wallet must wait 24 hours after verification before first withdrawal.
+8. **Retrying payouts to a removed bank account** — Don't cache bank account tokens and retry after a `Withdraw Failure` webhook. Hard ACH returns (R02/R03/R04) remove the account, so re-fetch `GET /api/withdraw` and ask the user to re-link when their account is gone.
+
+9. **24-hour wait for USDC withdrawals** — International users withdrawing USDC to Solana wallet must wait 24 hours after verification before first withdrawal.
