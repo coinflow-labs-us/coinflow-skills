@@ -636,7 +636,7 @@ Pass `deviceId` to `<CoinflowPurchase>` or include as `x-device-id` header.
 
 ## Level 2/3 Data (B2B)
 
-B2B merchants can pass Level 2/3 data on business and commercial card payments to qualify for lower interchange. Pass `l2l3Data` on `POST /api/checkout/card/{merchantId}`, `POST /api/checkout/token/{merchantId}`, or `POST /api/checkout/jwt-token`. It is **not** accepted on wallets (Apple Pay, Google Pay, Paze), card on file, MIT, or zero authorization.
+B2B merchants can pass Level 2/3 data on business and commercial card payments to qualify for lower interchange. Pass `l2l3Data` on `POST /api/checkout/card/{merchantId}`, `POST /api/checkout/token/{merchantId}`, `POST /api/checkout/jwt-token`, `POST /api/checkout/card-on-file`, or `POST /api/checkout/merchant-initiated-transaction`. It is **not** accepted on wallets (Apple Pay, Google Pay, Paze), card on file for an original Apple Pay payment, or zero authorization.
 
 ```bash
 POST /api/checkout/card/YOUR_MERCHANT_ID
