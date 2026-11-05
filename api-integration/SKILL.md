@@ -83,6 +83,7 @@ x-coinflow-auth-signed-message: WALLET_SIGNATURE
 | **Login by MerchantID** | 3 / 90 seconds |
 | **KYC** | 3 / 1 minute |
 | **Checkout JWT** | 5 / 10 minutes |
+| **Checkout Totals** | 100 / 1 minute per wallet + merchant |
 | **Not Found (404)** | 10 / 10 seconds |
 | **Support Tickets** | 60 / 1 hour |
 | **Failed Checkouts** | 5 / 10 minutes (sandbox) |
