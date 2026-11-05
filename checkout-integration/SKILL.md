@@ -217,6 +217,36 @@ x-coinflow-client-ip: CUSTOMER_IP
 - Lower fees than cards
 - **ACH error codes to handle**: R01 (Insufficient Funds), R02 (Account Closed), R03 (No Account), R04 (Invalid Account Number), R05 (Unauthorized), R07 (Auth Revoked), R08 (Payment Stopped), R09 (Uncollected Funds)
 
+#### Skipping the customer info step on a bank link
+
+After the payer links a bank, the hosted page asks for any name, email or address Coinflow doesn't already have. Store them server-side with Create Customer first, then request the bank link with the same user ID and **without** `customerInfo`:
+
+```bash
+# 1. Store the customer's details (server-side)
+curl -X POST https://api-sandbox.coinflow.cash/api/customer \
+  -H "Authorization: $COINFLOW_API_KEY" \
+  -H "x-coinflow-auth-user-id: user123" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "payer@example.com", "customerInfo": {"firstName": "Jane", "lastName": "Doe", "address": "123 Main St", "city": "New York", "state": "NY", "zip": "10001", "country": "US"}}'
+
+# 2. Request the bank link for the same user (no customerInfo)
+curl -X POST https://api-sandbox.coinflow.cash/api/checkout/bank-link \
+  -H "Authorization: $COINFLOW_API_KEY" \
+  -H "x-coinflow-auth-user-id: user123" \
+  -H "Content-Type: application/json" \
+  -d '{"email": "payer@example.com", "callbackUrl": "https://example.com/linked"}'
+```
+
+| Stored at Create Customer | Payer sees after linking |
+|---|---|
+| Name, email and full address (`address`, `city`, `state`, `zip`) | No form; the link completes |
+| Name and email only | Address fields only |
+| Nothing | Full form |
+
+- Stored values are used for the bank account and for bank-owner name matching. **The payer can't see or change them.**
+- `customerInfo` passed to `bank-link` ends up in the link URL, where the payer can edit it. It is also ignored once a customer already has stored `customerInfo`. Prefer Create Customer when the name must be trusted.
+- The address counts as stored only when it is a complete, valid US address: all four fields present, a recognized state (full names like `California` are accepted), and a 5-digit ZIP (ZIP+4 is trimmed to 5). `country` defaults to `US`; any other country, or a partial or invalid address, still shows the address form.
+
 ### Apple Pay
 
 **Requirements:**
